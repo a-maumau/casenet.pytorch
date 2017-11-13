@@ -64,10 +64,10 @@ class ResidualBlock(nn.Module):
 
 # ResNet Base
 class Model(nn.Module):
-    def __init__(self, block, layers):
-        super(ResNet, self).__init__()
+    def __init__(self, block, layers, class_num):
+        super(Model, self).__init__()
 
-        self.class_num = 183+1 # 183class
+        self.class_num = class_num # COCO:184, SBD:20
 
         self.in_channels = 64
         self.conv = nn.Conv2d(3, 64, kernel_size=7, stride=1, padding=3, bias=False)
@@ -75,7 +75,7 @@ class Model(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         # ouput from ReLU 64
         self.fmap1 = nn.Conv2d(64, 1, kernel_size=1, stride=1, padding=0, bias=False)
-        self.upsample1 = nn.Upsample(scale_factor=1)
+        #self.upsample1 = nn.Upsample(scale_factor=1)
         # it seems like nn.UpsamplingBilinear2d is deprecated.
         #self.upsample1 = nn.UpsamplingBilinear2d(scale_factor=1)
         
@@ -92,9 +92,8 @@ class Model(nn.Module):
         self.upsample3 = nn.Upsample(scale_factor=4)
         
         """
-            paper's block
             in the paper, their figure shows output is 2048.
-            but in the caffe code, it is 1024, so it should be the same as the original Resnet101.
+            but in the caffe code witch is provided is 1024, so it should be the same as the original Resnet101.
 
         self.layer2 = self.make_layer(block, 512, layers[1], 2)
         # ouput from layer2 is 1024
@@ -131,7 +130,7 @@ class Model(nn.Module):
         out = self.bn(out)
         out = self.relu(out)
         f1 = self.fmap1(out)
-        #f1 = self.upsample1(f1)
+        #f1 = self.upsample1(f1) #same size
         
         out = self.maxpool(out)
         out = self.layer1(out)
@@ -147,8 +146,8 @@ class Model(nn.Module):
         out = self.layer4(out)
 
         out = self.predict(out)
-        out = self.upsample4(out)
+        side_classification = self.upsample4(out)
         
-        out = shared_concat(out, f1, f2, f3, self.class_num)
+        out = shared_concat(side_classification, f1, f2, f3, self.class_num)
         
-        return self.fuse_classification(out)
+        return self.fuse_classification(out) , side_classification
