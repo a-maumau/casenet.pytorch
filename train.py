@@ -11,6 +11,7 @@ import scipy as sp
 from PIL import Image
 import numpy as np
 import os
+from datetime import datetime as dt
 
 from model import Model, ResidualBlock
 from loss import loss_function
@@ -19,6 +20,11 @@ import pair_transforms
 from settings import *
 
 def main(args):
+	tdatetime = dt.now()
+	train_date = tdatetime.strftime('%Y%m%d')
+	train_log_file = open(os.path.join(args.save_dir, 'train_{}.txt'.format(train_date)), 'w')
+	val_log_file = open(os.path.join(args.save_dir, 'val_{}.txt'.format(train_date)), 'w')
+
 	if not os.path.exists(args.save_dir):
 		os.makedirs(args.save_dir)
 
@@ -55,7 +61,7 @@ def main(args):
 		for epoch in tqdm(range(args.epochs)):
 			if args.batch_batch:
 				"""
-					using batch in batch
+					using mini-batch in mini-batch
 				"""
 				train_loss_total = 0
 				train_prog = tqdm(enumerate(train_loader), total=len(train_loader))
@@ -119,7 +125,9 @@ def main(args):
 				lr /= 10
 				optimizer = torch.optim.SGD(CASENet.parameters(), lr=lr, momentum=0.9)
 
-			print("train loss [epochs {0}/{1}]: {2}".format( epoch, args.epochs,train_loss_total))
+			#print("train loss [epochs {0}/{1}]: {2}".format( epoch, args.epochs,train_loss_total))
+			train_log_file.write("{}".format(train_loss_total))
+			train_log_file.flush()
 
 			val_prog = tqdm(enumerate(val_loader), total=len(val_loader))
 			CASENet.eval()
@@ -149,13 +157,14 @@ def main(args):
 					ind.save(args.save_dir+"output_epoch{}.png".format(epoch))
 					msk.save(args.save_dir+"mask_epoch{}.png".format(epoch))
 
-			print("validation loss : {0}".format(val_loss_total))
+			#print("validation loss : {0}".format(val_loss_total))
+			val_log_file.write("{}".format(val_loss_total))
+			val_log_file.flush()
 			CASENet.train()
-
-		print('Accuracy of the model on the test images: %d %%' % (100 * correct / total))
 		
 		# Save the Model
 		torch.save(CASENet.state_dict(), 'CASENet_{0}_fin.pkl'.format(args.epochs))
+		log_file.close()
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
